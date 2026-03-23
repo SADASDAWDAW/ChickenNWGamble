@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChikinSMP Casino</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* SENİN CSS TASARIMIN (DEĞİŞTİRİLMEDİ) */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#07070f; --bg2:#0d0d1a; --card:#111120; --card2:#16162a;
+  --border:#1f1f3a; --border2:#2a2a4a; --cyan:#00e5ff; --cyan2:#00b8d4;
+  --cyan-glow:rgba(0,229,255,0.15); --text:#dde0f0; --muted:#5a5a8a;
+  --muted2:#3a3a6a; --gold:#ffd700; --green:#00e676; --red:#ff1744; --purple:#7c4dff;
+}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+#stars{position:fixed;inset:0;pointer-events:none;z-index:0;}
+.star{position:absolute;border-radius:50%;background:#fff;animation:twinkle var(--d) var(--delay) infinite;}
+@keyframes twinkle{0%,100%{opacity:0;}50%{opacity:var(--op);}}
+#app{display:flex;flex-direction:column;min-height:100vh;position:relative;z-index:1;}
+.layout{display:flex;flex:1;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:58px;background:rgba(7,7,15,0.95);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);}
+.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;}
+.logo-box{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--cyan),var(--purple));display:flex;align-items:center;justify-content:center;font-size:18px;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.nav-bal{background:var(--card2);border:1px solid var(--border2);padding:6px 14px;border-radius:8px;font-size:12px;color:var(--cyan);font-weight:700;font-family:'JetBrains Mono',monospace;display:none;}
+.user-chip{display:none;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--border2);padding:5px 12px;border-radius:8px;font-size:12px;}
+.btn-nav-login{background:var(--cyan);color:#000;border:none;padding:7px 18px;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;}
+.btn-nav-logout{background:transparent;color:var(--muted);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;display:none;}
+
+/* SIDEBAR & PAGES */
+aside{width:210px;background:var(--bg2);border-right:1px solid var(--border);padding:18px 0;position:sticky;top:58px;height:calc(100vh - 58px);flex-shrink:0;}
+.s-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--muted);transition:0.2s;}
+.s-item.active{background:var(--card);color:var(--cyan);border-left:2px solid var(--cyan);}
+main{flex:1;overflow-y:auto;}
+.page{display:none;padding:32px;}
+.page.active{display:block;}
+
+/* LEADERBOARD & MODAL */
+.lb-tabs{display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--border);}
+.lb-tab{padding:10px;cursor:pointer;color:var(--muted);font-size:13px;}
+.lb-tab.active{color:var(--cyan);border-bottom:2px solid var(--cyan);}
+.lb-row{display:flex;align-items:center;gap:15px;background:var(--card);padding:12px;border-radius:10px;margin-bottom:8px;border:1px solid var(--border);}
+.lb-rank{width:30px;font-weight:bold;color:var(--cyan);}
+.lb-name{flex:1;font-weight:bold;}
+.lb-val{font-family:'JetBrains Mono';color:var(--gold);}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;z-index:1000;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--card);padding:30px;border-radius:15px;width:400px;border:1px solid var(--border2);}
+.fi{width:100%;padding:10px;margin:10px 0;background:var(--card2);border:1px solid var(--border);color:#fff;border-radius:5px;}
+.btn-verify{width:100%;padding:10px;background:var(--cyan);border:none;border-radius:5px;font-weight:bold;cursor:pointer;}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;padding:15px 25px;background:var(--card2);border:1px solid var(--cyan);border-radius:10px;color:white;transform:translateY(100px);transition:0.3s;z-index:10000;}
+.toast.show{transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<div id="stars"></div>
+<div id="app">
+  <nav>
+    <a class="nav-logo" onclick="navigate('home')">
+      <div class="logo-box">🐓</div>
+      <span class="nav-logo-text">ChikinSMP</span>
+    </a>
+    <div class="nav-right">
+      <div class="nav-bal" id="nav-bal">$0</div>
+      <div class="user-chip" id="user-chip"><span class="ava">🐓</span><span id="chip-name"></span></div>
+      <button class="btn-nav-logout" id="btn-logout" onclick="logout()">Log Out</button>
+      <button class="btn-nav-login" id="btn-login-nav" onclick="openLogin()">Log In</button>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <aside>
+      <div class="s-item active" id="nav-home" onclick="navigate('home')">🏠 Home</div>
+      <div class="s-item" id="nav-mines" onclick="navigate('mines')">💣 Mines</div>
+      <div class="s-item" id="nav-coinflip" onclick="navigate('coinflip')">🪙 Coinflip</div>
+      <div class="s-item" id="nav-dice" onclick="navigate('dice')">🎲 Dice</div>
+      <div class="s-item" id="nav-leaderboard" onclick="navigate('leaderboard')">🏆 Leaderboard</div>
+    </aside>
+
+    <main>
+      <div class="page active" id="page-home">
+        <h1>Welcome to Chikin Casino</h1>
+        <p>Login to start playing with $1,000 free credits!</p>
+      </div>
+
+      <div class="page" id="page-leaderboard">
+        <h2 style="margin-bottom:20px">🏆 Liderlik Tablosu</h2>
+        <div class="lb-tabs">
+          <div class="lb-tab active" onclick="renderLeaderboard('richest')">En Zenginler</div>
+          <div class="lb-tab" onclick="renderLeaderboard('wagered')">En Çok Oynayanlar</div>
+        </div>
+        <div id="lb-content"></div>
+      </div>
+
+      <div class="page" id="page-mines"><h2>💣 Mines Geliyor...</h2></div>
+      <div class="page" id="page-coinflip"><h2>🪙 Coinflip Geliyor...</h2></div>
+      <div class="page" id="page-dice"><h2>🎲 Dice Geliyor...</h2></div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h2>Giriş Yap</h2>
+    <input class="fi" id="login-ign" type="text" placeholder="Minecraft Kullanıcı Adın">
+    <div id="modal-err" style="color:red; font-size:12px"></div>
+    <button class="btn-verify" onclick="doLogin()">Başla</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATABASE & STATE ────────────────────────────────────
+let usersDB = JSON.parse(localStorage.getItem('chikin_usersDB')) || {};
+let currentUser = localStorage.getItem('chikin_currentUser') || null;
+let balance = 0;
+let wagered = 0;
+
+if(currentUser) {
+    loadUserData(currentUser);
+}
+
+function loadUserData(user) {
+    if(usersDB[user]) {
+        balance = usersDB[user].balance;
+        wagered = usersDB[user].wagered || 0;
+    }
+}
+
+function saveToDB() {
+    if(currentUser) {
+        usersDB[currentUser] = {
+            balance: balance,
+            wagered: wagered
+        };
+        localStorage.setItem('chikin_usersDB', JSON.stringify(usersDB));
+    }
+}
+
+// ── LOGIN / LOGOUT ──────────────────────────────────────
+function openLogin() { document.getElementById('modal-overlay').classList.add('open'); }
+function closeLogin() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+function doLogin() {
+    const ign = document.getElementById('login-ign').value.trim();
+    if(!ign) return;
+
+    currentUser = ign;
+    localStorage.setItem('chikin_currentUser', currentUser);
+
+    if(!usersDB[currentUser]) {
+        usersDB[currentUser] = { balance: 1000, wagered: 0 };
+    }
+
+    loadUserData(currentUser);
+    updateUI();
+    closeLogin();
+    showToast("Hoş geldin, " + ign);
+}
+
+function logout() {
+    saveToDB();
+    currentUser = null;
+    localStorage.removeItem('chikin_currentUser');
+    location.reload();
+}
+
+// ── UI ──────────────────────────────────────────────────
+function updateUI() {
+    const li = !!currentUser;
+    document.getElementById('btn-login-nav').style.display = li ? 'none' : 'block';
+    document.getElementById('btn-logout').style.display = li ? 'block' : 'none';
+    document.getElementById('nav-bal').style.display = li ? 'block' : 'none';
+    document.getElementById('user-chip').style.display = li ? 'flex' : 'none';
+    
+    if(li) {
+        document.getElementById('nav-bal').textContent = '$' + balance.toLocaleString();
+        document.getElementById('chip-name').textContent = currentUser;
+        saveToDB();
+    }
+}
+
+// ── LEADERBOARD (DINAMIK) ───────────────────────────────
+function renderLeaderboard(type) {
+    const lbContent = document.getElementById('lb-content');
+    const players = Object.keys(usersDB).map(name => ({
+        name: name,
+        balance: usersDB[name].balance,
+        wagered: usersDB[name].wagered || 0
+    }));
+
+    if(type === 'richest') players.sort((a,b) => b.balance - a.balance);
+    else players.sort((a,b) => b.wagered - a.wagered);
+
+    lbContent.innerHTML = players.slice(0, 10).map((p, i) => `
+        <div class="lb-row" style="${p.name === currentUser ? 'border-color:var(--cyan)' : ''}">
+            <div class="lb-rank">#${i+1}</div>
+            <div class="lb-name">${p.name} ${p.name === currentUser ? '(Sen)' : ''}</div>
+            <div class="lb-val">$${(type === 'richest' ? p.balance : p.wagered).toLocaleString()}</div>
+        </div>
+    `).join('');
+}
+
+// ── NAVIGATE ────────────────────────────────────────────
+function navigate(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    if(page === 'leaderboard') renderLeaderboard('richest');
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Yıldız Arkaplan Başlat
+(function(){
+  const c=document.getElementById('stars');
+  for(let i=0;i<100;i++){
+    const s=document.createElement('div');
+    s.className='star';
+    s.style.cssText=`left:${Math.random()*100}%; top:${Math.random()*100}%; width:2px; height:2px; --d:${2+Math.random()*3}s; --delay:${Math.random()*5}s; --op:0.5`;
+    c.appendChild(s);
+  }
+})();
+
+updateUI();
+</script>
+</body>
+</html>
